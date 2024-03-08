@@ -7,17 +7,12 @@ using System.Globalization;
 
 namespace gUSBampSyncDemoCS
 {
-    public struct DataPoint
-    {
-        public DateTime Timestamp { get; set; }
-        public float Value { get; set; }
-    }
     class Program
     {
         /// <summary>
         /// The number of seconds that the application should acquire data.
         /// </summary>
-        const uint NumSecondsRunning = 120;
+        const uint NumSecondsRunning = 20;
 
         /// <summary>
         /// Starts data acquisition and writes received data to a binary file.
@@ -30,7 +25,6 @@ namespace gUSBampSyncDemoCS
         /// fclose(fid);
         /// </code>
         /// </remarks>
-
         static void Main()
         {
             DataAcquisitionUnit acquisitionUnit = new DataAcquisitionUnit();
@@ -49,7 +43,6 @@ namespace gUSBampSyncDemoCS
 
             try
             {
-
                 //create file stream
                 using (FileStream fileStream = new FileStream("new/receivedData.bin", FileMode.Create))
                 {
@@ -65,26 +58,23 @@ namespace gUSBampSyncDemoCS
                                 //to stop the application after a specified time, get start time
                                 DateTime startTime = DateTime.Now;
                                 DateTime stopTime = startTime.AddSeconds(NumSecondsRunning);
-
+                                string firstTime = startTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+                                timestampWriter.WriteLine(firstTime); // Write timestamp
+                                timestampWriter.WriteLine("hi");
                                 //this is the data processing thread; data received from the devices will be written out to a file here
                                 while (DateTime.Now < stopTime)
                                 {
                                     float[] data = acquisitionUnit.ReadData(numValuesAtOnce);
-                                    //int currenttime = startTime.Millisecond;
-                                    //long currenttime = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-                                    DateTime currenttime = DateTime.UtcNow;
-                                    string stringtime = currenttime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
-
-                                    ///timestampWriter.WriteLine(stringtime); // Write timestamp
 
                                     //write data to file
                                     for (int i = 0; i < data.Length; i++)
-                                    {
-                                        var dataPoint = new DataPoint { Timestamp = currenttime, Value = data[i] };
-                                        timestampWriter.Write(dataPoint.Timestamp);
-                                        writer.Write(dataPoint.Value);
-                                    }
+                                        writer.Write(data[i]);
+
                                 }
+                                DateTime lastTime = DateTime.Now;
+                                string byeTime = lastTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+                                timestampWriter.WriteLine("bye");
+                                timestampWriter.WriteLine(byeTime); // Write timestamp
                             }
                         }
                     }
