@@ -7,6 +7,11 @@ using System.Globalization;
 
 namespace gUSBampSyncDemoCS
 {
+    public struct DataPoint
+    {
+        public DateTime Timestamp { get; set; }
+        public float Value { get; set; }
+    }
     class Program
     {
         /// <summary>
@@ -25,6 +30,7 @@ namespace gUSBampSyncDemoCS
         /// fclose(fid);
         /// </code>
         /// </remarks>
+
         static void Main()
         {
             DataAcquisitionUnit acquisitionUnit = new DataAcquisitionUnit();
@@ -43,6 +49,7 @@ namespace gUSBampSyncDemoCS
 
             try
             {
+
                 //create file stream
                 using (FileStream fileStream = new FileStream("new/receivedData.bin", FileMode.Create))
                 {
@@ -68,12 +75,15 @@ namespace gUSBampSyncDemoCS
                                     DateTime currenttime = DateTime.UtcNow;
                                     string stringtime = currenttime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-                                    timestampWriter.WriteLine(stringtime); // Write timestamp
-                                    
+                                    ///timestampWriter.WriteLine(stringtime); // Write timestamp
+
                                     //write data to file
                                     for (int i = 0; i < data.Length; i++)
-                                        writer.Write(data[i]);
-
+                                    {
+                                        var dataPoint = new DataPoint { Timestamp = currenttime, Value = data[i] };
+                                        timestampWriter.Write(dataPoint.Timestamp);
+                                        writer.Write(dataPoint.Value);
+                                    }
                                 }
                             }
                         }
