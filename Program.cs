@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using System.Threading;
+using System.Globalization;
 
 namespace gUSBampSyncDemoCS
 {
@@ -11,7 +12,7 @@ namespace gUSBampSyncDemoCS
         /// <summary>
         /// The number of seconds that the application should acquire data.
         /// </summary>
-        const uint NumSecondsRunning = 120; ///add more sec due to filter
+        const uint NumSecondsRunning = 120;
 
         /// <summary>
         /// Starts data acquisition and writes received data to a binary file.
@@ -35,8 +36,6 @@ namespace gUSBampSyncDemoCS
             int numScans = 512;
             int numChannels = 0;
 
-            TimeSpan samplingPeriod = TimeSpan.FromSeconds(1.0/numScans);
-
             foreach (DeviceConfiguration deviceConfiguration in devices.Values)
                 numChannels += (deviceConfiguration.SelectedChannels.Count + Convert.ToInt32(deviceConfiguration.TriggerLineEnabled));
 
@@ -45,9 +44,9 @@ namespace gUSBampSyncDemoCS
             try
             {
                 //create file stream
-                using (FileStream fileStream = new FileStream("new/receivedData_1.bin", FileMode.Create))
+                using (FileStream fileStream = new FileStream("new/receivedData.bin", FileMode.Create))
                 {
-                    using (FileStream timestampStream = new FileStream("new/timestamps_1.bin", FileMode.Create))
+                    using (FileStream timestampStream = new FileStream("new/timestamps.bin", FileMode.Create))
                     {
                         using (BinaryWriter writer = new BinaryWriter(fileStream))
                         {
@@ -63,24 +62,18 @@ namespace gUSBampSyncDemoCS
                                 //this is the data processing thread; data received from the devices will be written out to a file here
                                 while (DateTime.Now < stopTime)
                                 {
-                                    DateTime currenttime = DateTime.Now;
+                                    float[] data = acquisitionUnit.ReadData(numValuesAtOnce);
+                                    //int currenttime = startTime.Millisecond;
+                                    //long currenttime = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+                                    DateTime currenttime = DateTime.UtcNow;
+                                    string stringtime = currenttime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-                                    float[] data = acquisitionUnit.ReadData(numValuesAtOnce);                                    
+                                    timestampWriter.WriteLine(stringtime); // Write timestamp
+                                    
                                     //write data to file
                                     for (int i = 0; i < data.Length; i++)
                                         writer.Write(data[i]);
 
-                                    DateTime aftertime = DateTime.Now;
-                                    TimeSpan recordingDuration = aftertime - currenttime;
-                                    long timestamp = aftertime.Ticks / TimeSpan.TicksPerMillisecond;
-
-                                    //int currenttime = startTime.Millisecond;
-                                    //long currenttime = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-
-                                    //string stringtime = currenttime.ToString();
-
-                                    timestampWriter.WriteLine(aftertime); // Write timestamp
-                                    
                                 }
                             }
                         }
@@ -116,7 +109,7 @@ namespace gUSBampSyncDemoCS
                 deviceConfiguration.TriggerLineEnabled = false;
                 deviceConfiguration.SCEnabled = false;
                 deviceConfiguration.Mode = gUSBampWrapper.OperationModes.Normal;
-                deviceConfiguration.BandpassFilters = new Dictionary<byte, int>(); ///apply filter
+                deviceConfiguration.BandpassFilters = new Dictionary<byte, int>();
                 deviceConfiguration.NotchFilters = new Dictionary<byte, int>();
                 deviceConfiguration.BipolarSettings = new gUSBampWrapper.Bipolar();
                 deviceConfiguration.CommonGround = new gUSBampWrapper.Gnd();
