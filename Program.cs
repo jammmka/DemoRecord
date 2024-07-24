@@ -4,6 +4,10 @@ using System.Text;
 using System.IO;
 using System.Threading;
 using System.Globalization;
+using System.Net.Sockets;
+using System.Net;
+using static gUSBampSyncDemoCS.gUSBampWrapper;
+using System.Data.SqlClient;
 
 namespace gUSBampSyncDemoCS
 {
@@ -12,7 +16,7 @@ namespace gUSBampSyncDemoCS
         /// <summary>
         /// The number of seconds that the application should acquire data.
         /// </summary>
-        const uint NumSecondsRunning = 20;
+        const uint NumSecondsRunning = 15; //additional 3sec just in case
 
         /// <summary>
         /// Starts data acquisition and writes received data to a binary file.
@@ -41,12 +45,28 @@ namespace gUSBampSyncDemoCS
 
             int numValuesAtOnce = numScans * numChannels;
 
+            const int listenPort = 2020;
+            UdpClient receivingUdpClient = new UdpClient(listenPort);
+            IPEndPoint RemoteIpEndPoint = new IPEndPoint(IPAddress.Any, 0);
+
             try
             {
+                Byte[] receiveBytes = receivingUdpClient.Receive(ref RemoteIpEndPoint);
+                string returnData = Encoding.ASCII.GetString(receiveBytes);
+
+                Console.WriteLine("This is the message you received " +
+                                            returnData.ToString());
+                Console.WriteLine("This message was sent from " +
+                                            RemoteIpEndPoint.Address.ToString() +
+                                            " on their port number " +
+                                            RemoteIpEndPoint.Port.ToString());
+                //USBampgetinfo
+                string fileName = returnData.ToString() + "_eeg.bin";
+                string timestampName = returnData.ToString() + "_timestamp.bin";
                 //create file stream
-                using (FileStream fileStream = new FileStream("new/receivedData.bin", FileMode.Create))
+                using (FileStream fileStream = new FileStream(fileName, FileMode.Create))
                 {
-                    using (FileStream timestampStream = new FileStream("new/timestamps.bin", FileMode.Create))
+                    using (FileStream timestampStream = new FileStream(timestampName, FileMode.Create))
                     {
                         using (BinaryWriter writer = new BinaryWriter(fileStream))
                         {
@@ -65,10 +85,17 @@ namespace gUSBampSyncDemoCS
                                 while (DateTime.Now < stopTime)
                                 {
                                     float[] data = acquisitionUnit.ReadData(numValuesAtOnce);
-
+                                    DateTime currentTime = DateTime.Now;
+                                    int i;
                                     //write data to file
-                                    for (int i = 0; i < data.Length; i++)
+                                    for (i = 0; i < data.Length; i++)
                                         writer.Write(data[i]);
+                                        if ((i + 1) % 16 == 0) // After every 16 data points
+                                        {
+                                            double offset = (i / 16.0) * (1000.0 / 512.0);
+                                            DateTime currentTimeS = currentTime.AddMilliseconds(offset);
+                                            writer.Write(currentTimeS.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture));
+                                        }
 
                                 }
                                 DateTime lastTime = DateTime.Now;
@@ -90,7 +117,7 @@ namespace gUSBampSyncDemoCS
                 acquisitionUnit.StopAcquisition();
 
                 Console.WriteLine("Press any key exit...");
-                Console.ReadKey(true);
+                //Console.ReadKey(true);
             }
         }
 
@@ -110,10 +137,38 @@ namespace gUSBampSyncDemoCS
                 deviceConfiguration.SCEnabled = false;
                 deviceConfiguration.Mode = gUSBampWrapper.OperationModes.Normal;
                 deviceConfiguration.BandpassFilters = new Dictionary<byte, int>();
+                foreach (byte channel in deviceConfiguration.SelectedChannels)
+                {
+                    //deviceConfiguration.BandpassFilters[channel] = 54;  // 0.1hz 8th order hpf for 512hz sfr //0.1,1,2,5
+                    //deviceConfiguration.BandpassFilters[channel] = 60;  // 100hz 8th order lpf for 512hz sfr //30,60,100,200hz
+                    deviceConfiguration.BandpassFilters[channel] = 68;
+
+                    //065 | 0.01 | 200.0 | 512 | 8 | 1
+                    //066 | 0.10 | 30.0  | 512 | 8 | 1
+                    //067 | 0.10 | 60.0  | 512 | 8 | 1
+                    //068 | 0.10 | 100.0 | 512 | 8 | 1
+                    //069 | 0.10 | 200.0 | 512 | 8 | 1
+                }
                 deviceConfiguration.NotchFilters = new Dictionary<byte, int>();
+                foreach (byte channel in deviceConfiguration.SelectedChannels)
+                {
+                    deviceConfiguration.NotchFilters[channel] = 4;  // 48-52hz 4th order hpf for 512hz sfr //5 = 58-62hz
+                }
                 deviceConfiguration.BipolarSettings = new gUSBampWrapper.Bipolar();
-                deviceConfiguration.CommonGround = new gUSBampWrapper.Gnd();
-                deviceConfiguration.CommonReference = new gUSBampWrapper.Ref();
+                deviceConfiguration.CommonGround = new gUSBampWrapper.Gnd
+                {
+                    Gnd1 = true,
+                    Gnd2 = true,
+                    Gnd3 = true,
+                    Gnd4 = true,
+                };
+                deviceConfiguration.CommonReference = new gUSBampWrapper.Ref
+                {
+                    Ref1 = true,
+                    Ref2 = true,
+                    Ref3 = true,
+                    Ref4 = true,
+                };
                 deviceConfiguration.Drl = new gUSBampWrapper.Channel();
 
                 deviceConfiguration.Dac = new gUSBampWrapper.DAC();
