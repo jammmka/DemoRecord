@@ -16,7 +16,7 @@ namespace gUSBampSyncDemoCS
         /// <summary>
         /// The number of seconds that the application should acquire data.
         /// </summary>
-        const uint NumSecondsRunning = 15; //additional 3sec just in case
+        const uint NumSecondsRunning =400; //additional 3sec just in case
 
         /// <summary>
         /// Starts data acquisition and writes received data to a binary file.
@@ -45,24 +45,26 @@ namespace gUSBampSyncDemoCS
 
             int numValuesAtOnce = numScans * numChannels;
 
-            const int listenPort = 2020;
-            UdpClient receivingUdpClient = new UdpClient(listenPort);
-            IPEndPoint RemoteIpEndPoint = new IPEndPoint(IPAddress.Any, 0);
+            //const int listenPort = 2020;
+            //UdpClient receivingUdpClient = new UdpClient(listenPort);
+            //IPEndPoint RemoteIpEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
             try
             {
-                Byte[] receiveBytes = receivingUdpClient.Receive(ref RemoteIpEndPoint);
-                string returnData = Encoding.ASCII.GetString(receiveBytes);
+                //Byte[] receiveBytes = receivingUdpClient.Receive(ref RemoteIpEndPoint);
+                //string returnData = Encoding.ASCII.GetString(receiveBytes);
 
-                Console.WriteLine("This is the message you received " +
-                                            returnData.ToString());
-                Console.WriteLine("This message was sent from " +
-                                            RemoteIpEndPoint.Address.ToString() +
-                                            " on their port number " +
-                                            RemoteIpEndPoint.Port.ToString());
+                //Console.WriteLine("This is the message you received " +
+                //                            returnData.ToString());
+                //Console.WriteLine("This message was sent from " +
+                //                            RemoteIpEndPoint.Address.ToString() +
+                //                            " on their port number " +
+                //                            RemoteIpEndPoint.Port.ToString());
                 //USBampgetinfo
-                string fileName = returnData.ToString() + "_eeg.bin";
-                string timestampName = returnData.ToString() + "_timestamp.bin";
+                //string fileName = returnData.ToString() + "_eeg.bin";
+                //string timestampName = returnData.ToString() + "_timestamp.bin";
+                string fileName = "D:/Experiment2/SeparateCheck/eeg01.bin";
+                string timestampName = "D:/Experiment2/SeparateCheck/timestamp01.bin";
                 //create file stream
                 using (FileStream fileStream = new FileStream(fileName, FileMode.Create))
                 {
@@ -78,7 +80,7 @@ namespace gUSBampSyncDemoCS
                                 //to stop the application after a specified time, get start time
                                 DateTime startTime = DateTime.Now;
                                 DateTime stopTime = startTime.AddSeconds(NumSecondsRunning);
-                                string firstTime = startTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+                                string firstTime = startTime.ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
                                 timestampWriter.WriteLine(firstTime); // Write timestamp
                                 timestampWriter.WriteLine("hi");
                                 //this is the data processing thread; data received from the devices will be written out to a file here
@@ -90,16 +92,16 @@ namespace gUSBampSyncDemoCS
                                     //write data to file
                                     for (i = 0; i < data.Length; i++)
                                         writer.Write(data[i]);
-                                        if ((i + 1) % 16 == 0) // After every 16 data points
-                                        {
-                                            double offset = (i / 16.0) * (1000.0 / 512.0);
-                                            DateTime currentTimeS = currentTime.AddMilliseconds(offset);
-                                            writer.Write(currentTimeS.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture));
-                                        }
+                                        //if ((i + 1) % 16 == 0) // After every 16 data points
+                                        //{
+                                        //    double offset = (i / 16.0) * (1000.0 / 512.0);
+                                        //    DateTime currentTimeS = currentTime.AddMilliseconds(offset);
+                                        //    writer.Write(currentTimeS.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture));
+                                        //}
 
                                 }
                                 DateTime lastTime = DateTime.Now;
-                                string byeTime = lastTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+                                string byeTime = lastTime.ToString("yyyy-MM-dd HH:mm:ss.fffffff", CultureInfo.InvariantCulture);
                                 timestampWriter.WriteLine("bye");
                                 timestampWriter.WriteLine(byeTime); // Write timestamp
                             }
